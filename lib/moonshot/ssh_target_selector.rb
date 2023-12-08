@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Moonshot
   # Choose a publically accessible instance to run commands on, given a Moonshot::Stack.
   class SSHTargetSelector
@@ -6,7 +8,7 @@ module Moonshot
       @stack = stack
     end
 
-    def choose!
+    def choose! # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       groups = @stack.resources_of_type('AWS::AutoScaling::AutoScalingGroup')
 
       asg = if groups.count == 1
@@ -23,7 +25,7 @@ module Moonshot
       Aws::AutoScaling::Client.new.describe_auto_scaling_groups(
         auto_scaling_group_names: [asg.physical_resource_id]
       ).auto_scaling_groups.first.instances.map(&:instance_id).first
-    rescue => e
+    rescue StandardError => e
       raise "Failed to select an instance from the Auto Scaling Group: #{e.message}"
     end
   end

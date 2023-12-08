@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'forwardable'
 require 'moonshot/shell'
 require 'open3'
@@ -40,9 +42,9 @@ module Moonshot::BuildMechanism
       @build_mechanism.doctor_hook
     end
 
-    def resources=(r)
+    def resources=(res)
       super
-      @build_mechanism.resources = r
+      @build_mechanism.resources = res
     end
 
     def pre_build_hook(version)
@@ -135,6 +137,7 @@ module Moonshot::BuildMechanism
 
     def hub_create_release(semver, commitish, changelog_entry)
       return if hub_release_exists(semver)
+
       message = "#{semver}\n\n#{changelog_entry}"
       cmd = "hub release create #{semver} --commitish=#{commitish}"
       cmd << ' --prerelease' if semver.pre || semver.build
@@ -220,7 +223,7 @@ module Moonshot::BuildMechanism
 
     def doctor_check_upstream
       sh_out('git remote | grep ^upstream$')
-    rescue => e
+    rescue StandardError => e
       critical "git remote `upstream` not found.\n#{e.message}"
     else
       success 'git remote `upstream` exists.'
@@ -228,7 +231,7 @@ module Moonshot::BuildMechanism
 
     def doctor_check_hub_auth
       sh_out('hub ci-status master')
-    rescue => e
+    rescue StandardError => e
       critical "`hub` failed, install hub and authorize it.\n#{e.message}"
     else
       success '`hub` installed and authorized.'

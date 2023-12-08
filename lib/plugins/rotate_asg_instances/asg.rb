@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Moonshot
   module RotateAsgInstances
     class ASG # rubocop:disable Metrics/ClassLength
@@ -67,7 +69,6 @@ module Moonshot
       def with_scale_up
         scaled_up = scale_up_if_possible
         yield
-
       rescue StandardError => e
         @ilog.error("Failure encountered during scale up to the desired capacity: #{e.message}")
       ensure
@@ -110,7 +111,7 @@ module Moonshot
           begin
             inst = Aws::EC2::Instance.new(id: i.id)
             first_block_device = inst.block_device_mappings.first
-            volumes << first_block_device.ebs.volume_id if first_block_device
+            volumes << first_block_device[:ebs][:volume_id] if first_block_device
           rescue StandardError => e
             # We're catching all errors here, because failing to reap a volume
             # is not a critical error, will not cause issues with the update.
@@ -187,6 +188,7 @@ module Moonshot
           true
         rescue Aws::AutoScaling::Errors::ValidationError => e
           raise e unless e.message.include?('is not part of Auto Scaling group')
+
           wait_for_capacity
           false
         rescue StandardError => e
@@ -203,7 +205,7 @@ module Moonshot
       def reattach_instance(instance)
         instance.load
         return unless instance.data.nil? \
-          || %w(Detached Detaching).include?(instance.lifecycle_state)
+          || %w[Detached Detaching].include?(instance.lifecycle_state)
 
         until instance.data.nil? || instance.lifecycle_state == 'Detached'
           sleep 10
@@ -218,6 +220,7 @@ module Moonshot
       #   List of instances to terminate. Defaults to all instances with outdated
       #   launch configurations.
       def terminate_instances(shutdown_instances)
+        @ilog.info("Terminate instances: #{shutdown_instances}")
         if shutdown_instances.any?
           @step.continue(
             "Terminating #{shutdown_instances.size} outdated instances..."
@@ -231,7 +234,7 @@ module Moonshot
             next
           end
 
-          next unless %w(stopping stopped).include?(instance.state.name)
+          next unless %w[stopping stopped].include?(instance.state[:name])
 
           instance.wait_until_stopped
 
@@ -249,15 +252,13 @@ module Moonshot
 
       def reap_volumes(volumes)
         volumes.each do |volume_id|
-          begin
-            @step.continue("Deleting volume: #{volume_id}")
-            ec2_client(region: ENV['AWS_REGION'])
-              .delete_volume(volume_id: volume_id)
-          rescue StandardError => e
-            # We're catching all errors here, because failing to reap a volume
-            # is not a critical error, will not cause issues with the release.
-            @step.failure("Failed to delete volume #{volume_id}: #{e.message}")
-          end
+          @step.continue("Deleting volume: #{volume_id}")
+          ec2_client(region: ENV['AWS_REGION'])
+            .delete_volume(volume_id:)
+        rescue StandardError => e
+          # We're catching all errors here, because failing to reap a volume
+          # is not a critical error, will not cause issues with the release.
+          @step.failure("Failed to delete volume #{volume_id}: #{e.message}")
         end
       end
 
@@ -277,7 +278,7 @@ module Moonshot
           @step.continue("Instances: #{instances.join(', ')}")
         end
 
-        asg.reload.wait_until(before_wait: before_wait, max_attempts: 60,
+        asg.reload.wait_until(before_wait:, max_attempts: 60,
                               delay: 30) do |a|
           instances_up = a.instances.select do |i|
             i.lifecycle_state == 'InService'
@@ -292,8 +293,9 @@ module Moonshot
       #
       # @param id [String] ID of the instance to terminate.
       def shutdown_instance(id)
-        instance = Aws::EC2::Instance.new(id: id)
+        instance = Aws::EC2::Instance.new(id:)
         return if instance_in_terminal_state?(instance)
+
         @ssh.exec('sudo shutdown -h now', id)
         instance.wait_until_stopped
       end
@@ -304,12 +306,13 @@ module Moonshot
                 elsif instance.is_a?(Aws::AutoScaling::Instance)
                   check_asg_instance(instance)
                 end
-        %w(Terminating Terminated).include?(state)
+        %w[Terminating Terminated].include?(state)
       end
 
       def check_ec2_instance(instance)
+        @ilog.info("Check ec2 instance: #{instance}")
         if instance.exists?
-          instance.state.name
+          instance.state[:name]
         else
           'Terminated'
         end

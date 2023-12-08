@@ -1,4 +1,4 @@
-# coding: utf-8
+# frozen_string_literal: true
 
 require 'colorize'
 
@@ -36,13 +36,13 @@ module Moonshot
       table.each { |line| add_line(format(format, *line)) }
     end
 
-    def draw(depth = 1, first = true)
+    def draw(depth = 1, first = true) # rubocop:disable Style/OptionalBooleanParameter
       print first ? '┌' : '├'
       print '─' * depth
-      puts ' ' << @name.light_black
+      puts " #{@name.light_black}"
       @lines = [''] + @lines + ['']
       @lines.each do |line|
-        puts '│' << (' ' * depth) << line
+        puts "│#{' ' * depth}#{line}"
       end
       @children.each do |child|
         child.draw(depth + 1, false)
