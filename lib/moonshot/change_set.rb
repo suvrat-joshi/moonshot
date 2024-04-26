@@ -77,15 +77,20 @@ module Moonshot
     end
 
     def wait_for_change_set
+      puts "hello"
       @cf_client.wait_until(:change_set_create_complete, {
         stack_name: @stack_name,
         change_set_name: @name
       })
 
+      puts "world"
+
       @change_set = @cf_client.describe_change_set({
         stack_name: @stack_name,
         change_set_name: @name
       })
+
+      puts "suvrat"
     rescue Aws::Waiters::Errors::FailureStateError
       sleep 5
       retry unless @retry_attempts && @retry_attempts >= 3
