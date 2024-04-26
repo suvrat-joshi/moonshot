@@ -77,12 +77,15 @@ module Moonshot
     end
 
     def wait_for_change_set
-      @cf_client.wait_until(:change_set_create_complete,
-                            stack_name: @stack_name,
-                            change_set_name: @name)
+      @cf_client.wait_until(:change_set_create_complete, {
+        stack_name: @stack_name,
+        change_set_name: @name
+      })
 
-      @change_set = @cf_client.describe_change_set(stack_name: @stack_name,
-      change_set_name: @name)
+      @change_set = @cf_client.describe_change_set({
+        stack_name: @stack_name,
+        change_set_name: @name
+      })
     end
   end
 end
