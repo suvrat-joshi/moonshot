@@ -80,12 +80,21 @@ module Moonshot
       @cf_client.wait_until(:change_set_create_complete, {
         stack_name: @stack_name,
         change_set_name: @name
+      }, {
+        max_attempts: 3,
+        delay: 5,
       })
 
       @change_set = @cf_client.describe_change_set({
         stack_name: @stack_name,
         change_set_name: @name
       })
+    rescue Aws::Waiters::Errors::FailureStateError
+      puts "Status: #{@change_set.status}"
+      puts "Status Reason: #{@change_set.status_reason}"
+      sleep 1
+      retry unless @retry_attempts && @retry_attempts >= 3
+      raise e
     end
   end
 end
