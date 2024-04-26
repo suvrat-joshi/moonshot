@@ -78,7 +78,7 @@ module Moonshot
 
     def wait_for_change_set
       puts "hello"
-      @cf_client.wait_until(:change_set_create_complete, {
+      @cf_client.wait_until(change_set_create_complete, {
         stack_name: @stack_name,
         change_set_name: @name
       })
