@@ -77,12 +77,25 @@ module Moonshot
     end
 
     def wait_for_change_set
-      @cf_client.wait_until(:change_set_create_complete,
-                            stack_name: @stack_name,
-                            change_set_name: @name)
+      wait_seconds = Moonshot.config.changeset_wait_time || 90
+      start = Time.now.to_i
 
-      @change_set = @cf_client.describe_change_set(stack_name: @stack_name,
-      change_set_name: @name)
+      loop do
+        resp = @cf_client.describe_change_set(
+          change_set_name: @name,
+          stack_name: @stack_name)
+
+        if %w(CREATE_COMPLETE FAILED).include?(resp.status)
+          @change_set = resp
+          return
+        end
+
+        if Time.now.to_i > start + wait_seconds
+          raise "ChangeSet did not complete creation within #{wait_seconds} seconds!"
+        end
+
+        sleep 5
+      end
     end
   end
 end
